@@ -13,7 +13,21 @@ When run with profiling data, findings show their actual runtime impact:
 ```
 Hone v0.1.0
 
-Analyzing lib/sqids.rb with profile: tmp/stackprof.json
+Analyzing lib/sqids.rb with profile: tmp/hone/cpu_profile.json
+────────────────────────────────────────────────────────────────────────
+
+lib/sqids.rb:69 in `Sqids#decode`
+17.5% of allocations — High impact
+
+67 │
+68 │     alphabet_chars = @alphabet.chars
+69 │     id.chars.each do |c|
+         ^^^^^^^^^^^^^^^^^^^^
+70 │       return ret unless alphabet_chars.include?(c)
+71 │     end
+
+     Use `id.each_char { ... }` instead of `chars.each` to avoid intermediate array
+
 ────────────────────────────────────────────────────────────────────────
 
 lib/sqids.rb:183 in `Sqids#blocked_id?`
@@ -47,11 +61,11 @@ Fix: j > 0
 
 Summary: 14 findings
 
-  1 high impact  (>5% of CPU or allocations)  ← fix these first
-  13 moderate  (1-5%)
+  3 high impact  (>5% of CPU or allocations)  ← fix these first
+  11 moderate  (1-5%)
 ```
 
-The percentages show how much CPU time (or memory allocation) each method used during profiling, helping you focus on fixes that matter.
+The percentages show how much CPU time or memory allocation each method used during profiling, helping you focus on fixes that matter.
 
 ## Installation
 

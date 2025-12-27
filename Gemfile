@@ -13,3 +13,4 @@ gem "minitest", "~> 5.16"
 gem "standard", "~> 1.3"
 
 gem "stackprof"
+gem "memory_profiler"
