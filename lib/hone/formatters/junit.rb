@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "rexml/document"
-
 module Hone
   module Formatters
     class JUnit < Base
@@ -15,6 +13,7 @@ module Hone
       }.freeze
 
       def format
+        require_rexml!
         doc = build_document
         output = +""
         formatter = REXML::Formatters::Pretty.new(2)
@@ -25,6 +24,12 @@ module Hone
       end
 
       private
+
+      def require_rexml!
+        require "rexml/document"
+      rescue LoadError
+        raise Hone::Error, "JUnit format requires the 'rexml' gem. Add it to your Gemfile: gem 'rexml'"
+      end
 
       def build_document
         doc = REXML::Document.new
