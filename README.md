@@ -162,3 +162,11 @@ Run `hone patterns` to list all available patterns.
 
 - Ruby 3.1+
 - Prism (bundled with Ruby 3.3+, add `gem 'prism'` for earlier versions)
+
+## Acknowledgements
+
+Some pattern detections inspired by:
+
+- [fast-ruby](https://github.com/fastruby/fast-ruby) - Benchmarks for common Ruby idioms
+- [fasterer](https://github.com/DamirSvrtan/fasterer) - Static analysis for speed improvements
+- [rubocop-performance](https://github.com/rubocop/rubocop-performance) - Performance-focused RuboCop cops
