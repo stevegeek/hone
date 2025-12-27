@@ -1,127 +1,147 @@
 # Hone
 
-A Ruby gem for finding performance optimization opportunities by combining static AST analysis with runtime profiling data.
+Find Ruby performance optimizations that actually matter by combining static analysis with runtime profiling.
 
-**Status: Early development / proof-of-concept**
+## Installation
 
-## The Problem
+Add to your Gemfile:
 
-Static analysis tools like RuboCop Performance flag optimization patterns equally, regardless of whether that code is actually a bottleneck. Profilers like Vernier show you where time is spent, but don't suggest what to fix. Developers are left manually correlating between tools.
+```ruby
+gem 'hone', group: :development
 
-## The Idea
-
-Hone bridges static analysis and runtime profiling:
-
-1. **Static analysis** (via Prism) detects optimization patterns in your code
-2. **Runtime profiling** identifies actual CPU and memory hotspots
-3. **Correlation** prioritizes patterns that are in hot code paths
-4. **JIT awareness** understands which patterns affect YJIT optimization
-
-This means you get recommendations ranked by actual impact, not just pattern matching.
-
-## Example Output
-
-Patterns in hot methods get prioritized. Cold code patterns are deprioritized—fixing them won't move the needle.
-
-```
-=== STEP 3: HONE CUSTOM MATCHERS (Prism-based) ===
-
-Hone found 5 issues:
-  Line 24 [chars_map_ord]: Use `.codepoints` instead of `.chars.map(&:ord)`
-  Line 32 [map_select_chain]: Use `.filter_map { }` instead of `.map { }.select { }`
-  Line 52 [positive_predicate]: Use `> 0` instead of `.positive?` in hot paths
-  Line 64 [kernel_loop]: Use `while true` instead of `loop { }` in hot paths
-  Line 89 [slice_with_length]: Use endless range `[1..]` instead of `[1, str.length]`
-
-=== STEP 5: CORRELATION ===
-
-PRIORITIZED RECOMMENDATIONS:
-
- 1. [🔥 HOT] [FASTERER]
-    Line 41: Using each_with_index is slower than while loop.
-    Method: SqidsPatterns#sum_with_index (18.5% of runtime)
-
- 2. [🔥 HOT] [HONE:map_select_chain]
-    Line 32: Use `.filter_map { }` instead of `.map { }.select { }`
-    Method: SqidsPatterns#filter_numbers (3.93% of runtime)
-
- 3. [❄️  COLD] [HONE:chars_map_ord]
-    Line 24: Use `.codepoints` instead of `.chars.map(&:ord)`
-    Method: SqidsPatterns#decode_chars (0.0% of runtime)
-
+# Optional: for profiling integration
+gem 'stackprof', group: :development
+gem 'memory_profiler', group: :development
 ```
 
-Different optimizations target different dimensions—a method can be CPU-cold but allocation-hot:
-
-```
-=== STEP 4: DUAL-DIMENSION CORRELATION ===
-
-PRIORITIZED RECOMMENDATIONS:
-
- 1. [🔥 ALLOC-HOT] [HONE:chars_map_ord] (ALLOCATION)
-    Line 57: Use `.codepoints` instead of `.chars.map(&:ord)`
-    Method: DualHotspotExample#process_text_chars
-    CPU: 0.15% | Allocations: 99.4%
-
- 2. [🔥 CPU-HOT] [HONE:positive_predicate] (CPU)
-    Line 30: Use `> 0` instead of `.positive?` in hot paths
-    Method: DualHotspotExample#compute_score
-    CPU: 1.06% | Allocations: 0.0%
-
- 3. [❄️  COLD] [HONE:map_select_chain] (ALLOCATION)
-    Line 67: Use `.filter_map { }` instead of `.map { }.select { }`
-    Method: DualHotspotExample#filter_and_transform
-    CPU: 0.75% | Allocations: 0.4%
-
-KEY INSIGHT:
-  • ALLOCATION patterns → correlate with allocation hotspots
-  • CPU patterns → correlate with CPU hotspots
-  A method might be cold in CPU but hot in allocations!
-```
-
-JIT-aware patterns understand YJIT optimization impact:
-
-```
-=== STEP 2: CPU PROFILING ===
-
-CPU hotspots (top 5):
-    3.39%  DynamicIvarRecord#get_field
-     1.6%  EagerIvarRecord#ensure_name
-     1.6%  StableShapeRecord#process
-
-=== STEP 3: ALLOCATION PROFILING ===
-
-Allocation hotspots (top 5):
-   16.67%  DynamicIvarRecord#set_field (300000 objects)
-   11.11%  DynamicIvarRecord#get_field (200000 objects)
-   11.11%  EagerIvarRecord#ensure_name (199990 objects)
-
-=== STEP 5: TRIPLE-DIMENSION CORRELATION ===
-
-PRIORITIZED RECOMMENDATIONS:
-
- 1. [🔥 JIT-HOT] [HONE:dynamic_ivar_get]
-    Dynamic instance_variable_get suggests ivars used as key-value store...
-    Method: DynamicIvarRecord#get_field
-    CPU: 3.39% | Alloc: 11.11%
-
- 2. [🔥 JIT-HOT] [HONE:lazy_ivar]
-    Lazy ivar initialization (||=) outside initialize causes shape tra...
-    Method: EagerIvarRecord#ensure_name
-    CPU: 1.6% | Alloc: 11.11%
-
- 3. [❄️  COLD] [HONE:lazy_ivar]
-    Lazy ivar initialization (||=) outside initialize causes shape tra...
-    Method: LazyIvarRecord#cached_value
-    CPU: 0.2% | Alloc: 0.0%
-```
-
-## Running the Experiments
+Or install directly:
 
 ```bash
-cd experiments
-bundle install
-bundle exec ruby correlate_advanced.rb
-bundle exec ruby correlate_dual.rb
-bundle exec ruby correlate_triple.rb
+gem install hone
 ```
+
+## Quick Start
+
+```bash
+# Try it on the included examples
+hone analyze examples/
+
+# Or analyze your own code
+hone analyze lib/
+```
+
+### With Profiling (Recommended)
+
+For prioritized results, use a harness:
+
+```bash
+# Create a harness in your project
+hone init harness
+
+# Edit .hone/harness.rb to define your workload, then:
+hone profile --analyze
+```
+
+Or provide an existing StackProf profile:
+
+```bash
+hone analyze lib/ --profile stackprof.json
+```
+
+## Output
+
+Findings are prioritized by runtime impact:
+
+```
+[HOT] lib/order.rb:45 `calculate_total` - 18.5% CPU
+
+  - amount.positive?
+  + amount > 0
+
+  Why: Method call overhead; `> 0` uses optimized fixnum comparison.
+
+[WARM] lib/order.rb:128 `validate_items` - 3.2% CPU
+
+  - items.map { }.select { }
+  + items.filter_map { }
+
+  Why: Avoids intermediate array allocation.
+
+[COLD] lib/order.rb:201 `to_json` - 0.1% CPU
+  (use --show-cold to display)
+```
+
+### Heat Levels
+
+| Level | Threshold | Meaning |
+|-------|-----------|---------|
+| HOT | >5% CPU or memory | High impact - fix these first |
+| WARM | 1-5% | Worth fixing when nearby |
+| COLD | <1% | Low priority |
+
+Without profiling data, findings show `[?]` (unknown impact).
+
+## CLI Reference
+
+```bash
+# Analysis
+hone analyze FILE|DIR                    # Static analysis
+hone analyze FILE --profile STACKPROF    # With CPU correlation
+hone analyze FILE --memory-profile FILE  # With memory correlation
+
+# Profiling
+hone init harness                        # Create .hone/harness.rb template
+hone profile                             # Run harness, generate profiles
+hone profile --analyze                   # Profile and analyze in one step
+hone profile --memory                    # Include memory profiling
+
+# Output control
+--format FORMAT      # text, json, github, sarif, junit, tsv
+--top N              # Show only top N findings
+--hot-only           # Only HOT findings
+--show-cold          # Include COLD findings (hidden by default)
+--quiet              # One line per finding
+
+# CI integration
+--fail-on LEVEL      # Exit non-zero for: hot, warm, any, none
+--baseline FILE      # Suppress known findings
+```
+
+## Harness
+
+The harness defines a repeatable workload for profiling:
+
+```ruby
+# .hone/harness.rb
+setup do
+  require_relative '../lib/my_gem'
+  @data = load_test_data
+end
+
+exercise iterations: 100 do
+  MyGem.process(@data)
+end
+
+teardown do
+  cleanup  # optional
+end
+```
+
+- `setup`: Runs once before profiling (load code, prepare data)
+- `exercise`: The code to profile (runs N iterations)
+- `teardown`: Cleanup after profiling (optional)
+
+## Patterns
+
+Hone detects 50+ patterns across three categories:
+
+- **CPU**: Method call overhead, loop inefficiencies
+- **Allocation**: Intermediate arrays, string allocations
+- **JIT**: Dynamic ivars, shape transitions, YJIT blockers
+
+Run `hone patterns` to list all available patterns.
+
+## Requirements
+
+- Ruby 3.1+
+- Prism (bundled with Ruby 3.3+, add `gem 'prism'` for earlier versions)
