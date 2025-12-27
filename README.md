@@ -50,34 +50,51 @@ hone analyze lib/ --profile stackprof.json
 
 ## Output
 
-Findings are prioritized by runtime impact:
+Findings are prioritized by CPU, memory, and JIT impact:
 
 ```
-[HOT] lib/order.rb:45 `calculate_total` - 18.5% CPU
+[HOT-ALLOC] lib/sqids.rb:69 `Sqids#decode` — 0.1% CPU, 17.4% alloc
 
-  - amount.positive?
-  + amount > 0
+  - id.chars.each { |c| ... }
+  + id.each_char { |c| ... }
 
-  Why: Method call overhead; `> 0` uses optimized fixnum comparison.
+  Why: Avoids intermediate array allocation
+  Speedup: ~1.4x faster, no array allocation
 
-[WARM] lib/order.rb:128 `validate_items` - 3.2% CPU
+[HOT-ALLOC] lib/sqids.rb:103 `Sqids#shuffle` — 2.7% CPU, 13.7% alloc
 
-  - items.map { }.select { }
-  + items.filter_map { }
+  chars[i]
 
-  Why: Avoids intermediate array allocation.
+  Why: Use `alphabet[...]` directly instead of `.chars` variable indexing
+  Speedup: Avoids allocating array of all characters
 
-[COLD] lib/order.rb:201 `to_json` - 0.1% CPU
+[JIT-UNFRIENDLY] lib/record.rb:13 `Record#set_field` — 1.0% CPU, 0.2% alloc
+
+  instance_variable_set("@#{name}", value)
+
+  Why: Dynamic instance_variable_set causes object shape transitions, hurting YJIT
+  Speedup: Significant with YJIT (2-3x)
+
+[WARM] lib/util.rb:44 `Util#smallest` — 0.0% CPU, 4.8% alloc
+
+  - arr.sort.first
+  + arr.min
+
+  Why: O(n) instead of O(n log n), no intermediate array
+
+[COLD] lib/util.rb:89 — 0.1% alloc
   (use --show-cold to display)
 ```
 
 ### Heat Levels
 
-| Level | Threshold | Meaning |
-|-------|-----------|---------|
-| HOT | >5% CPU or memory | High impact - fix these first |
-| WARM | 1-5% | Worth fixing when nearby |
-| COLD | <1% | Low priority |
+| Level | Meaning |
+|-------|---------|
+| HOT | >5% CPU or allocation - fix these first |
+| HOT-ALLOC | Low CPU but high allocation impact |
+| JIT-UNFRIENDLY | Hurts YJIT optimization |
+| WARM | 1-5% impact - worth fixing |
+| COLD | <1% impact - low priority |
 
 Without profiling data, findings show `[?]` (unknown impact).
 
