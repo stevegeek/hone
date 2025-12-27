@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="logo.png" alt="Hone" width="200">
+</p>
+
 # Hone
 
 Find Ruby performance optimizations that actually matter by combining static analysis with runtime profiling.
