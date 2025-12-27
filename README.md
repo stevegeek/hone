@@ -13,7 +13,7 @@ Findings are prioritized by CPU, memory, and JIT impact:
   + id.each_char { |c| ... }
 
   Why: Avoids intermediate array allocation
-  Speedup: ~1.4x faster, no array allocation
+  Speedup: No array allocation
 
 [HOT-ALLOC] lib/sqids.rb:103 `Sqids#shuffle` — 2.7% CPU, 13.7% alloc
 
@@ -27,7 +27,7 @@ Findings are prioritized by CPU, memory, and JIT impact:
   instance_variable_set("@#{name}", value)
 
   Why: Dynamic instance_variable_set causes object shape transitions, hurting YJIT
-  Speedup: Significant with YJIT (2-3x)
+  Speedup: Significant with YJIT
 
 [WARM] lib/util.rb:44 `Util#smallest` — 0.0% CPU, 4.8% alloc
 
