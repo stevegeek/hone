@@ -4,11 +4,13 @@
 
 # Hone
 
+> **Note:** This is currently a proof of concept. APIs and output formats may change.
+
 Find Ruby performance optimizations that actually matter by combining static analysis with runtime profiling.
 
 ## Example Output
 
-When run with profiling data, findings show their actual runtime impact:
+When run with profiling data, performance optimisation findings show their potential runtime impact:
 
 ```
 Hone v0.1.0
