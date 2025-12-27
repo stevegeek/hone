@@ -2,6 +2,44 @@
 
 Find Ruby performance optimizations that actually matter by combining static analysis with runtime profiling.
 
+## Example Output
+
+Findings are prioritized by CPU, memory, and JIT impact:
+
+```
+[HOT-ALLOC] lib/sqids.rb:69 `Sqids#decode` — 0.1% CPU, 17.4% alloc
+
+  - id.chars.each { |c| ... }
+  + id.each_char { |c| ... }
+
+  Why: Avoids intermediate array allocation
+  Speedup: ~1.4x faster, no array allocation
+
+[HOT-ALLOC] lib/sqids.rb:103 `Sqids#shuffle` — 2.7% CPU, 13.7% alloc
+
+  chars[i]
+
+  Why: Use `alphabet[...]` directly instead of `.chars` variable indexing
+  Speedup: Avoids allocating array of all characters
+
+[JIT-UNFRIENDLY] lib/record.rb:13 `Record#set_field` — 1.0% CPU, 0.2% alloc
+
+  instance_variable_set("@#{name}", value)
+
+  Why: Dynamic instance_variable_set causes object shape transitions, hurting YJIT
+  Speedup: Significant with YJIT (2-3x)
+
+[WARM] lib/util.rb:44 `Util#smallest` — 0.0% CPU, 4.8% alloc
+
+  - arr.sort.first
+  + arr.min
+
+  Why: O(n) instead of O(n log n), no intermediate array
+
+[COLD] lib/util.rb:89 — 0.1% alloc
+  (use --show-cold to display)
+```
+
 ## Installation
 
 Add to your Gemfile:
@@ -48,45 +86,7 @@ Or provide an existing StackProf profile:
 hone analyze lib/ --profile stackprof.json
 ```
 
-## Output
-
-Findings are prioritized by CPU, memory, and JIT impact:
-
-```
-[HOT-ALLOC] lib/sqids.rb:69 `Sqids#decode` — 0.1% CPU, 17.4% alloc
-
-  - id.chars.each { |c| ... }
-  + id.each_char { |c| ... }
-
-  Why: Avoids intermediate array allocation
-  Speedup: ~1.4x faster, no array allocation
-
-[HOT-ALLOC] lib/sqids.rb:103 `Sqids#shuffle` — 2.7% CPU, 13.7% alloc
-
-  chars[i]
-
-  Why: Use `alphabet[...]` directly instead of `.chars` variable indexing
-  Speedup: Avoids allocating array of all characters
-
-[JIT-UNFRIENDLY] lib/record.rb:13 `Record#set_field` — 1.0% CPU, 0.2% alloc
-
-  instance_variable_set("@#{name}", value)
-
-  Why: Dynamic instance_variable_set causes object shape transitions, hurting YJIT
-  Speedup: Significant with YJIT (2-3x)
-
-[WARM] lib/util.rb:44 `Util#smallest` — 0.0% CPU, 4.8% alloc
-
-  - arr.sort.first
-  + arr.min
-
-  Why: O(n) instead of O(n log n), no intermediate array
-
-[COLD] lib/util.rb:89 — 0.1% alloc
-  (use --show-cold to display)
-```
-
-### Heat Levels
+### About Heat Levels
 
 | Level | Meaning |
 |-------|---------|
