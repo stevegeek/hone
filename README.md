@@ -4,7 +4,9 @@ Find Ruby performance optimizations that actually matter by combining static ana
 
 ## Example Output
 
-Findings are prioritized by CPU, memory, and JIT impact:
+When run with profiling data, findings show their actual runtime impact. 
+
+The percentages indicate how much CPU time or memory allocation occurred in each method during profiling:
 
 ```
 [HOT-ALLOC] lib/sqids.rb:69 `Sqids#decode` — 0.1% CPU, 17.4% alloc
