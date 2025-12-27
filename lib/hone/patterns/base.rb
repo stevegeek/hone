@@ -35,6 +35,12 @@ module Hone
       end
       class << self
         attr_accessor :pattern_id, :optimization_type
+
+        def scope
+          @scope || :ruby
+        end
+
+        attr_writer :scope
       end
 
       def self.scan_file(path)
