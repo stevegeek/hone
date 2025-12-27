@@ -30,6 +30,7 @@ module Hone
     # @param format [Symbol] Output format: :text, :json, :github
     # @param color [Boolean, nil] Force color output (nil = auto-detect)
     # @param quiet [Boolean] Minimal output
+    # @param verbose [Boolean] Extended output with pattern details
     # @param top [Integer, nil] Show only top N findings
     # @param hot_only [Boolean] Only show HOT findings
     # @param show_cold [Boolean] Include COLD findings
@@ -37,7 +38,7 @@ module Hone
     # @param diff [String, nil] Git ref to compare against for changed files
     # @param baseline [String, nil] Path to baseline JSON file to suppress findings
     # @param rails [Boolean] Enable Rails-specific analysis
-    def initialize(path, profile: nil, memory_profile: nil, format: :text, color: nil, quiet: false,
+    def initialize(path, profile: nil, memory_profile: nil, format: :text, color: nil, quiet: false, verbose: false,
       top: nil, hot_only: false, show_cold: false, fail_on: :hot, diff: nil, baseline: nil, rails: false)
       @path = path
       @profile_path = profile || auto_detect_profile(:cpu)
@@ -45,6 +46,7 @@ module Hone
       @format = format.to_sym
       @color = color
       @quiet = quiet
+      @verbose = verbose
       @top = top
       @hot_only = hot_only
       @show_cold = show_cold
@@ -189,6 +191,7 @@ module Hone
       {
         show_cold: @show_cold,
         quiet: @quiet,
+        verbose: @verbose,
         color: determine_color,
         profile_path: @profile_path,
         memory_profile_path: @memory_profile_path,

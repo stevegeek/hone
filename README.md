@@ -8,43 +8,50 @@ Find Ruby performance optimizations that actually matter by combining static ana
 
 ## Example Output
 
-When run with profiling data, findings show their actual runtime impact. 
-
-The percentages indicate how much CPU time or memory allocation occurred in each method during profiling:
+When run with profiling data, findings show their actual runtime impact:
 
 ```
-[HOT-ALLOC] lib/sqids.rb:69 `Sqids#decode` — 0.1% CPU, 17.4% alloc
+Hone v0.1.0
 
-  - id.chars.each { |c| ... }
-  + id.each_char { |c| ... }
+Analyzing lib/sqids.rb with profile: tmp/stackprof.json
+────────────────────────────────────────────────────────────────────────
 
-  Why: Avoids intermediate array allocation
-  Speedup: No array allocation
+lib/sqids.rb:183 in `Sqids#blocked_id?`
+13.5% of CPU — High impact
 
-[HOT-ALLOC] lib/sqids.rb:103 `Sqids#shuffle` — 2.7% CPU, 13.7% alloc
+181 │           id.start_with?(word) || id.end_with?(word)
+182 │         else
+183 │           id.include?(word)
+                ^^^^^^^^^^^^^^^^^
+184 │         end
+185 │       end
 
-  chars[i]
+     Consider using Set instead of Array#include? for repeated lookups
 
-  Why: Use `alphabet[...]` directly instead of `.chars` variable indexing
-  Speedup: Avoids allocating array of all characters
+────────────────────────────────────────────────────────────────────────
 
-[JIT-UNFRIENDLY] lib/record.rb:13 `Record#set_field` — 1.0% CPU, 0.2% alloc
+lib/sqids.rb:104 in `Sqids#shuffle`
+3.1% of CPU — Moderate
 
-  instance_variable_set("@#{name}", value)
+102 │     i = 0
+103 │     j = chars.length - 1
+104 │     while j.positive?
+                ^^^^^^^^^^^
+105 │       r = ((i * j) + chars[i].ord + chars[j].ord) % chars.length
+106 │       chars[i], chars[r] = chars[r], chars[i]
 
-  Why: Dynamic instance_variable_set causes object shape transitions, hurting YJIT
-  Speedup: Significant with YJIT
+Fix: j > 0
+     Use `> 0` instead of `.positive?` to avoid method call overhead
 
-[WARM] lib/util.rb:44 `Util#smallest` — 0.0% CPU, 4.8% alloc
+────────────────────────────────────────────────────────────────────────
 
-  - arr.sort.first
-  + arr.min
+Summary: 14 findings
 
-  Why: O(n) instead of O(n log n), no intermediate array
-
-[COLD] lib/util.rb:89 — 0.1% alloc
-  (use --show-cold to display)
+  1 high impact  (>5% of CPU or allocations)  ← fix these first
+  13 moderate  (1-5%)
 ```
+
+The percentages show how much CPU time (or memory allocation) each method used during profiling, helping you focus on fixes that matter.
 
 ## Installation
 
@@ -92,17 +99,16 @@ Or provide an existing StackProf profile:
 hone analyze lib/ --profile stackprof.json
 ```
 
-### About Heat Levels
+### About Impact Levels
 
 | Level | Meaning |
 |-------|---------|
-| HOT | >5% CPU or allocation - fix these first |
-| HOT-ALLOC | Low CPU but high allocation impact |
-| JIT-UNFRIENDLY | Hurts YJIT optimization |
-| WARM | 1-5% impact - worth fixing |
-| COLD | <1% impact - low priority |
+| High impact | >5% CPU or allocation - fix these first |
+| JIT issue | Hurts YJIT optimization |
+| Moderate | 1-5% impact - worth fixing |
+| Low | <1% impact - low priority |
 
-Without profiling data, findings show `[?]` (unknown impact).
+Without profiling data, findings show "Unknown" impact.
 
 ## CLI Reference
 
@@ -121,9 +127,10 @@ hone profile --memory                    # Include memory profiling
 # Output control
 --format FORMAT      # text, json, github, sarif, junit, tsv
 --top N              # Show only top N findings
---hot-only           # Only HOT findings
---show-cold          # Include COLD findings (hidden by default)
---quiet              # One line per finding
+--hot-only           # Only high impact findings
+--show-cold          # Include low impact findings (hidden by default)
+--quiet / -q         # One line per finding
+--verbose / -V       # Extended output with pattern details
 
 # CI integration
 --fail-on LEVEL      # Exit non-zero for: hot, warm, any, none

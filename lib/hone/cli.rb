@@ -84,6 +84,11 @@ module Hone
       default: false,
       desc: "Minimal output (one line per finding)",
       aliases: "-q"
+    option :verbose,
+      type: :boolean,
+      default: false,
+      desc: "Extended output with pattern details",
+      aliases: "-V"
     option :top,
       type: :numeric,
       desc: "Show only top N findings"
@@ -117,6 +122,7 @@ module Hone
         format: options[:format],
         color: options[:color],
         quiet: options[:quiet],
+        verbose: options[:verbose],
         top: options[:top],
         hot_only: options[:hot_only],
         show_cold: options[:show_cold],
