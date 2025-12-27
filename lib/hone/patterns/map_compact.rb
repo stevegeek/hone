@@ -24,7 +24,7 @@ module Hone
         add_finding(
           node,
           message: "Use `.filter_map { }` instead of `.map { }.compact` to avoid intermediate array with nils",
-          speedup: "~1.5x faster, avoids intermediate array with nils"
+          speedup: "Avoids intermediate array with nils"
         )
       end
     end

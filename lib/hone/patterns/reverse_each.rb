@@ -22,7 +22,7 @@ module Hone
         add_finding(
           node,
           message: "Use `.reverse_each { }` instead of `.reverse.each { }` to avoid intermediate array",
-          speedup: "~2x faster, avoids intermediate array allocation"
+          speedup: "Avoids intermediate array allocation"
         )
       end
     end

@@ -20,7 +20,7 @@ module Hone
     #     yield(value)
     #   end
     #
-    # Impact: ~2x faster, avoids Proc allocation
+    # Impact: Avoids Proc allocation
     class YieldVsBlock < Base
       self.pattern_id = :yield_vs_block
       self.optimization_type = :cpu
@@ -53,7 +53,7 @@ module Hone
         add_finding(
           node,
           message: "Use `yield` instead of `#{@block_param_name}.call` to avoid Proc allocation",
-          speedup: "~2x faster, avoids Proc allocation"
+          speedup: "Avoids Proc allocation"
         )
       end
 

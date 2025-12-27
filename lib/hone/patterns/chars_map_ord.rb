@@ -24,7 +24,7 @@ module Hone
         add_finding(
           node,
           message: "Use `.codepoints` instead of `.chars.map(&:ord)` to avoid intermediate array allocation",
-          speedup: "~2x faster, fewer allocations"
+          speedup: "Fewer allocations"
         )
       end
 

@@ -22,7 +22,7 @@ module Hone
         add_finding(
           node,
           message: "Use `.max` instead of `.sort.last` to avoid sorting entire array",
-          speedup: "~5x faster, avoids sorting entire array"
+          speedup: "Avoids sorting entire array"
         )
       end
     end

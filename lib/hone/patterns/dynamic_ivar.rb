@@ -25,7 +25,7 @@ module Hone
         add_finding(
           node,
           message: "Dynamic instance_variable_set causes object shape transitions, hurting YJIT. Use a Hash for dynamic data instead.",
-          speedup: "Significant with YJIT (2-3x), none without"
+          speedup: "Enables better YJIT optimization"
         )
       end
 

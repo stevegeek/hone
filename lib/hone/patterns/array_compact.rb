@@ -24,13 +24,13 @@ module Hone
           add_finding(
             node,
             message: "Use `.compact` instead of `.reject { |x| x.nil? }` for optimized nil removal",
-            speedup: "~2x faster, optimized C implementation"
+            speedup: "Uses optimized C implementation"
           )
         elsif node.name == :select && select_not_nil_pattern?(block)
           add_finding(
             node,
             message: "Use `.compact` instead of `.select { |x| !x.nil? }` for optimized nil removal",
-            speedup: "~2x faster, optimized C implementation"
+            speedup: "Uses optimized C implementation"
           )
         end
       end

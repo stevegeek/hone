@@ -24,7 +24,7 @@ module Hone
         add_finding(
           node,
           message: "Use `.filter_map { }` instead of `.select { }.map { }` to avoid intermediate array",
-          speedup: "~1.5x faster, avoids intermediate array"
+          speedup: "Avoids intermediate array"
         )
       end
     end

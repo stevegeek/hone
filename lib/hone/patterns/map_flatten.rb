@@ -23,7 +23,7 @@ module Hone
         add_finding(
           node,
           message: "Use `.flat_map { }` instead of `.map { }.flatten` to avoid intermediate array",
-          speedup: "~1.5x faster, single pass without intermediate allocation"
+          speedup: "Single pass, no intermediate allocation"
         )
       end
     end

@@ -37,7 +37,7 @@ module Hone
         add_finding(
           node,
           message: "Use `.delete_suffix('#{suffix}')` instead of `.sub(/#{suffix}$/, '')`",
-          speedup: "~2x faster, avoids regex engine"
+          speedup: "Avoids regex engine overhead"
         )
       end
 

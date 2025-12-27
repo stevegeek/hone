@@ -23,7 +23,7 @@ module Hone
         add_finding(
           node,
           message: "Use `.min_by { }` instead of `.sort_by { }.first` to avoid sorting entire array",
-          speedup: "~5x faster, avoids sorting entire array"
+          speedup: "Avoids sorting entire array"
         )
       end
     end

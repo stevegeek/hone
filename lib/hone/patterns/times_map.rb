@@ -30,7 +30,7 @@ module Hone
         add_finding(
           node,
           message: "Use `Array.new(n) { }` instead of `n.times.map { }` to avoid Enumerator overhead",
-          speedup: "~2x faster, avoids Enumerator overhead"
+          speedup: "Avoids Enumerator overhead"
         )
       end
     end

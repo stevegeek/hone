@@ -96,7 +96,7 @@ module Hone
         add_finding(
           node,
           message: "Use `#{source}.each_char { }` instead of `.chars.each { }`",
-          speedup: "~1.4x faster, no intermediate array"
+          speedup: "No intermediate array allocation"
         )
       end
 

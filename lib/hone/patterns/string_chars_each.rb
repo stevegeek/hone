@@ -23,7 +23,7 @@ module Hone
           add_finding(
             node,
             message: "Use `#{replacement}` instead of `chars.each` to avoid intermediate array allocation",
-            speedup: "~1.4x faster, no array allocation"
+            speedup: "No intermediate array allocation"
           )
         end
 
