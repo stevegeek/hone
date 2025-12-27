@@ -91,8 +91,9 @@ module Hone
       def parse_by_location(location_data, allocation_data, memory: false)
         location_data.each do |entry|
           location = entry["location"] || entry["data"]
-          count = entry["count"] || entry["value"] || 1
-          memory_allocated = entry["memory"] || entry["memsize"] || 0
+          # Support both object count and byte count formats
+          count = entry["count"] || entry["value"] || entry["bytes"] || 1
+          memory_allocated = entry["memory"] || entry["memsize"] || entry["bytes"] || 0
 
           file, line, name = parse_location(location)
           key = "#{file}:#{line}"

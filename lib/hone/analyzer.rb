@@ -18,6 +18,9 @@ module Hone
   #   result = analyzer.run
   #
   class Analyzer
+    # Default directory for cached profile files
+    PROFILE_DIR = "tmp/hone"
+
     # Result of analysis containing findings, output, and exit code
     Result = Data.define(:findings, :output, :exit_code)
 
@@ -33,11 +36,12 @@ module Hone
     # @param fail_on [Symbol] Exit non-zero for: :hot, :warm, :any, :none
     # @param diff [String, nil] Git ref to compare against for changed files
     # @param baseline [String, nil] Path to baseline JSON file to suppress findings
+    # @param rails [Boolean] Enable Rails-specific analysis
     def initialize(path, profile: nil, memory_profile: nil, format: :text, color: nil, quiet: false,
-      top: nil, hot_only: false, show_cold: false, fail_on: :hot, diff: nil, baseline: nil)
+      top: nil, hot_only: false, show_cold: false, fail_on: :hot, diff: nil, baseline: nil, rails: false)
       @path = path
-      @profile_path = profile
-      @memory_profile_path = memory_profile
+      @profile_path = profile || auto_detect_profile(:cpu)
+      @memory_profile_path = memory_profile || auto_detect_profile(:memory)
       @format = format.to_sym
       @color = color
       @quiet = quiet
@@ -47,6 +51,7 @@ module Hone
       @fail_on = fail_on.to_sym
       @diff = diff
       @baseline = baseline
+      @rails = rails
     end
 
     # Run the analysis pipeline
@@ -108,7 +113,7 @@ module Hone
     end
 
     def scan_path
-      scanner = Scanner.new
+      scanner = Scanner.new(rails: @rails)
 
       if File.directory?(@path)
         scanner.scan_directory(@path)
@@ -223,6 +228,27 @@ module Hone
         end
       else
         ExitCodes::SUCCESS
+      end
+    end
+
+    def auto_detect_profile(type)
+      filename = case type
+      when :cpu then "cpu_profile.json"
+      when :memory then "memory_profile.json"
+      end
+
+      path = File.join(PROFILE_DIR, filename)
+
+      if File.exist?(path)
+        metadata_path = File.join(PROFILE_DIR, "metadata.json")
+        if File.exist?(metadata_path)
+          metadata = JSON.parse(File.read(metadata_path))
+          generated = metadata["generated_at"]
+          warn "Using cached #{type} profile from #{path} (generated: #{generated})"
+        else
+          warn "Using cached #{type} profile from #{path}"
+        end
+        path
       end
     end
   end

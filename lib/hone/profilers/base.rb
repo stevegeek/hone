@@ -13,8 +13,27 @@ module Hone
       private
 
       def find_matching_frame(method_info)
-        name, file = extract_search_criteria(method_info)
+        name, file, line, end_line = extract_search_criteria(method_info)
 
+        # First try to match by line range (for allocation profilers)
+        if line && file
+          match = @frames.find do |frame|
+            next unless frame[:file] && frame[:line]
+            next unless file_matches?(frame[:file], file)
+
+            frame_line = frame[:line].to_i
+            if end_line
+              # Method has a range, check if frame line is within it
+              frame_line >= line && frame_line <= end_line
+            else
+              # Exact line match
+              frame_line == line
+            end
+          end
+          return match if match
+        end
+
+        # Fall back to name-based matching
         @frames.find do |frame|
           matches_method?(frame, name, file)
         end
@@ -23,7 +42,7 @@ module Hone
       def extract_search_criteria(method_info)
         case method_info
         when String
-          [method_info, nil]
+          [method_info, nil, nil, nil]
         when Hash
           extract_from_hash(method_info)
         else
@@ -31,28 +50,44 @@ module Hone
         end
       end
 
-      # Extracts name and file from a Hash with symbol or string keys.
+      # Extracts name, file, line, and end_line from a Hash with symbol or string keys.
       #
-      # @param hash [Hash] Hash containing :name/:file or "name"/"file" keys
-      # @return [Array<String, String>] [name, file] tuple
+      # @param hash [Hash] Hash containing :name/:file/:line/:end_line keys
+      # @return [Array] [name, file, line, end_line] tuple
       #
       def extract_from_hash(hash)
-        [hash[:name] || hash["name"], hash[:file] || hash["file"]]
+        [
+          hash[:name] || hash["name"],
+          hash[:file] || hash["file"],
+          hash[:line] || hash["line"],
+          hash[:end_line] || hash["end_line"]
+        ]
       end
 
-      # Extracts name and file from objects with method accessors (like MethodInfo).
+      # Extracts name, file, line, end_line from objects with method accessors (like MethodInfo).
       #
-      # @param obj [Object] Object responding to :qualified_name/:name and optionally :file
-      # @return [Array<String, String>] [name, file] tuple
+      # @param obj [Object] Object responding to :qualified_name/:name and optionally :file/:line/:end_line
+      # @return [Array] [name, file, line, end_line] tuple
       #
       def extract_from_object(obj)
-        if obj.respond_to?(:qualified_name)
-          [obj.qualified_name, obj.file]
+        name = if obj.respond_to?(:qualified_name)
+          obj.qualified_name
         elsif obj.respond_to?(:name)
-          [obj.name, obj.respond_to?(:file) ? obj.file : nil]
+          obj.name
         else
-          [obj.to_s, nil]
+          obj.to_s
         end
+
+        file = obj.respond_to?(:file) ? obj.file : nil
+        # Support both :line and :start_line for compatibility
+        line = if obj.respond_to?(:start_line)
+          obj.start_line
+        elsif obj.respond_to?(:line)
+          obj.line
+        end
+        end_line = obj.respond_to?(:end_line) ? obj.end_line : nil
+
+        [name, file, line, end_line]
       end
 
       def matches_method?(frame, name, file)

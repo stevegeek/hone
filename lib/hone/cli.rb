@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 require "thor"
+require_relative "harness"
+require_relative "harness_generator"
+require_relative "harness_runner"
 
 module Hone
   # Command-line interface for Hone Ruby performance analyzer.
@@ -102,6 +105,10 @@ module Hone
     option :baseline,
       type: :string,
       desc: "Suppress findings in baseline JSON file"
+    option :rails,
+      type: :boolean,
+      default: false,
+      desc: "Include Rails/ActiveSupport-specific optimizations"
     def analyze(path)
       analyzer = Analyzer.new(
         path,
@@ -115,7 +122,8 @@ module Hone
         show_cold: options[:show_cold],
         fail_on: options[:fail_on],
         diff: options[:diff],
-        baseline: options[:baseline]
+        baseline: options[:baseline],
+        rails: options[:rails]
       )
 
       result = analyzer.run
@@ -123,6 +131,109 @@ module Hone
       puts result.output unless result.output.empty?
 
       exit result.exit_code
+    end
+
+    desc "init COMPONENT", "Initialize Hone components"
+    long_desc <<~DESC
+      Initialize Hone components in your project.
+
+      Components:
+        harness - Generate a performance harness template
+
+      Examples:
+        hone init harness        # Generate basic Ruby harness
+        hone init harness --rails  # Generate Rails-specific harness
+    DESC
+    option :rails,
+      type: :boolean,
+      default: false,
+      desc: "Generate Rails-specific harness template"
+    def init(component)
+      case component
+      when "harness"
+        generator = HarnessGenerator.new(rails: options[:rails])
+        generator.generate
+      else
+        puts "Unknown component: #{component}"
+        puts "Available components: harness"
+        exit 1
+      end
+    end
+
+    desc "profile", "Run harness and generate performance profiles"
+    long_desc <<~DESC
+      Run the performance harness and generate CPU (and optionally memory) profiles.
+
+      The harness file should define setup, exercise, and teardown blocks.
+      Profiles are saved to tmp/hone/ by default.
+
+      Examples:
+        hone profile                    # Run default harness
+        hone profile --memory           # Include memory profiling
+        hone profile --analyze          # Profile then analyze
+        hone profile --harness custom.rb  # Use custom harness file
+    DESC
+    option :harness,
+      type: :string,
+      default: ".hone/harness.rb",
+      desc: "Path to harness file"
+    option :profiler,
+      type: :string,
+      enum: %w[auto stackprof vernier],
+      default: "auto",
+      desc: "CPU profiler to use"
+    option :memory,
+      type: :boolean,
+      default: false,
+      desc: "Include memory profiling"
+    option :warmup,
+      type: :numeric,
+      default: 10,
+      desc: "Warmup iterations before profiling"
+    option :output,
+      type: :string,
+      default: "tmp/hone",
+      desc: "Output directory for profiles"
+    option :analyze,
+      type: :boolean,
+      default: false,
+      desc: "Run analysis after profiling"
+    def profile
+      unless File.exist?(options[:harness])
+        puts "Harness file not found: #{options[:harness]}"
+        puts "Run 'hone init harness' to generate a template."
+        exit 1
+      end
+
+      profiler_opt = (options[:profiler] == "auto") ? nil : options[:profiler].to_sym
+
+      runner = HarnessRunner.new(
+        options[:harness],
+        profiler: profiler_opt,
+        memory: options[:memory],
+        warmup: options[:warmup],
+        output_dir: options[:output]
+      )
+
+      puts "Loading harness from #{options[:harness]}..."
+      puts "Warmup: #{options[:warmup]} iterations"
+      puts "Profiler: #{profiler_opt || "auto-detect"}"
+      puts
+
+      profiles = runner.run
+
+      puts "Profiles generated:"
+      puts "  CPU:    #{profiles[:cpu]}"
+      puts "  Memory: #{profiles[:memory]}" if profiles[:memory]
+      puts
+
+      if options[:analyze]
+        puts "Running analysis..."
+        invoke :analyze, ["."], profile: profiles[:cpu], memory_profile: profiles[:memory]
+      else
+        puts "Run analysis with:"
+        puts "  hone analyze . --profile #{profiles[:cpu]}"
+      end
     end
 
     default_task :analyze

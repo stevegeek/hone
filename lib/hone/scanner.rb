@@ -9,8 +9,18 @@ module Hone
     # Default glob pattern for finding Ruby files
     DEFAULT_RUBY_GLOB = "**/*.rb"
 
-    def initialize(patterns: Patterns.registered)
-      @patterns = patterns
+    def initialize(patterns: Patterns.registered, rails: false)
+      @rails = rails
+      @patterns = patterns.select do |pattern|
+        # Skip abstract base classes (no pattern_id)
+        next false if pattern.pattern_id.nil?
+
+        if @rails
+          true
+        else
+          pattern.scope.nil? || pattern.scope == :ruby
+        end
+      end
     end
 
     # Scan a single file with all patterns
