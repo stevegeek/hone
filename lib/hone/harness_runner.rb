@@ -67,32 +67,43 @@ module Hone
     def profile_with_stackprof(harness, path)
       require "stackprof"
       # Run profiling and capture the result (don't let StackProf write Marshal format)
-      result = StackProf.run(mode: :cpu, raw: true, interval: 1000) do
+      # ignore_gc: true - skip GC frames (not actionable)
+      result = StackProf.run(mode: :cpu, raw: true, interval: 1000, ignore_gc: true) do
         harness.iterations.times { harness.run_exercise }
       end
-      # Convert to JSON format that Hone can parse
+      # Convert to JSON format that Hone can parse, filtering C frames
       File.write(path, stackprof_to_json(result))
     end
 
     def stackprof_to_json(data)
       # Convert StackProf result to JSON with string keys
-      json_data = {
-        "mode" => data[:mode].to_s,
-        "samples" => data[:samples],
-        "frames" => {}
-      }
+      # Filter out C frames (file is nil or contains <cfunc>) and recalculate
+      ruby_frames = {}
+      ruby_samples = 0
 
       data[:frames].each do |address, frame|
-        json_data["frames"][address.to_s] = {
+        file = frame[:file]
+        # Skip C functions and internal frames
+        next if file.nil? || file.empty? || file.include?("<cfunc>") || file.start_with?("(")
+
+        samples = frame[:samples] || 0
+        ruby_samples += samples
+
+        ruby_frames[address.to_s] = {
           "name" => frame[:name],
-          "file" => frame[:file],
+          "file" => file,
           "line" => frame[:line],
-          "samples" => frame[:samples] || 0,
+          "samples" => samples,
           "total_samples" => frame[:total_samples] || 0
         }
       end
 
-      JSON.pretty_generate(json_data)
+      {
+        "mode" => data[:mode].to_s,
+        "samples" => data[:samples],
+        "ruby_samples" => ruby_samples,
+        "frames" => ruby_frames
+      }.then { |json_data| JSON.pretty_generate(json_data) }
     end
 
     def profile_with_vernier(harness, path)

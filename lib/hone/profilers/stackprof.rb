@@ -8,7 +8,8 @@ module Hone
       def initialize(profile_path)
         super
 
-        @total_samples = @data["samples"] || calculate_total_samples
+        # Prefer ruby_samples (excludes C frames) for more accurate Ruby percentages
+        @total_samples = @data["ruby_samples"] || @data["samples"] || calculate_total_samples
         parse_frames
       end
 
