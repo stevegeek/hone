@@ -64,6 +64,8 @@ require_relative "hone/patterns/array_include_set"
 require_relative "hone/patterns/taint_tracking_base"
 require_relative "hone/patterns/chars_to_variable"
 require_relative "hone/patterns/chars_to_variable_tainted"
+require_relative "hone/patterns/split_map_join"
+require_relative "hone/patterns/split_join"
 
 require_relative "hone/scanner"
 

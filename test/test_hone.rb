@@ -47,4 +47,37 @@ class TestHone < Minitest::Test
     jit_findings = findings.select { |f| f.optimization_type == :jit }
     assert jit_findings.length >= 3, "Expected JIT patterns to be found"
   end
+
+  def test_regexp_match_avoids_dollar_one_false_positives
+    scanner = Hone::Scanner.new
+    findings = scanner.scan_file("test/fixtures/regexp_match_patterns.rb")
+
+    regexp_findings = findings.select { |f| f.pattern_id == :regexp_match }
+    flagged_lines = regexp_findings.map(&:line)
+
+    # Should flag simple cases without $1 usage
+    # Line 8: if str =~ /pattern/
+    assert_includes flagged_lines, 8, "Should flag simple =~ match (line 8)"
+    # Line 15: if /pattern/.match(str)
+    assert_includes flagged_lines, 15, "Should flag .match method (line 15)"
+    # Line 55: unless str =~ /pattern/
+    assert_includes flagged_lines, 55, "Should flag unless without $1 (line 55)"
+
+    # Should NOT flag cases with $1/$2 usage
+    # Line 29: if str =~ /(\w+)/ with $1 in body
+    refute_includes flagged_lines, 29, "Should NOT flag =~ when $1 is used"
+    # Line 36: raise ... if str =~ pattern (modifier if with $1)
+    refute_includes flagged_lines, 36, "Should NOT flag =~ when $1 is used in modifier if"
+    # Line 41: if str =~ /.../ with $1 and $2 in body
+    refute_includes flagged_lines, 41, "Should NOT flag =~ when $2 is used"
+    # Line 62: unless str =~ /.../ with $1 in else clause
+    refute_includes flagged_lines, 62, "Should NOT flag =~ when $1 is used in else"
+
+    # Should NOT flag assigned match
+    # Line 22: if m = str.match(/pattern/)
+    refute_includes flagged_lines, 22, "Should NOT flag when match is assigned"
+
+    # Verify total count - should be exactly 3 flagged
+    assert_equal 3, regexp_findings.length, "Expected exactly 3 regexp_match findings"
+  end
 end

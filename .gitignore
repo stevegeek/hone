@@ -11,3 +11,6 @@
 /tmp/
 Gemfile.lock
 examples/tmp/
+yjit-bench/
+rails-repo/
+
